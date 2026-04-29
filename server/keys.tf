@@ -12,7 +12,7 @@ resource "aws_key_pair" "web_key" {
 
 # Save the private key to file
 resource "local_file" "private_key_local" {
-  content  = tls_private_key.web_key.private_key_pem
-  filename = "./${var.key_name}.pem"
+  content         = tls_private_key.web_key.private_key_pem
+  filename        = "./${var.key_name}.pem"
   file_permission = "0400"
 }

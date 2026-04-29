@@ -1,8 +1,8 @@
 locals {
   ports = var.ports
   vpc = {
-    prod = "10.1.0.0/16"
-    dev = "10.2.0.0/16"
+    prod  = "10.1.0.0/16"
+    dev   = "10.2.0.0/16"
     stage = "10.3.0.0/16"
   }
 
@@ -14,7 +14,7 @@ locals {
 
 resource "aws_subnet" "subnet" {
   vpc_id                  = aws_vpc.vpc.id
-  cidr_block              = cidrsubnet(local.vpc[var.env], 8, 1)  # автоматически /24 из /16
+  cidr_block              = cidrsubnet(local.vpc[var.env], 8, 1)
   map_public_ip_on_launch = true
 
   tags = merge(local.common_tags, {
@@ -22,7 +22,6 @@ resource "aws_subnet" "subnet" {
   })
 }
 
-# 2. Интернет-шлюз
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.vpc.id
 
@@ -31,7 +30,6 @@ resource "aws_internet_gateway" "igw" {
   })
 }
 
-# 3. Таблица маршрутов
 resource "aws_route_table" "rt" {
   vpc_id = aws_vpc.vpc.id
 
@@ -45,7 +43,6 @@ resource "aws_route_table" "rt" {
   })
 }
 
-# 4. Привязка таблицы к подсети
 resource "aws_route_table_association" "rta" {
   subnet_id      = aws_subnet.subnet.id
   route_table_id = aws_route_table.rt.id
@@ -55,16 +52,16 @@ resource "aws_route_table_association" "rta" {
 resource "aws_eip" "eip" {
   tags = merge(local.common_tags, {
     Name = "${var.env}-ip"
-  })    
+  })
 }
 
 resource "aws_vpc" "vpc" {
-  cidr_block = local.vpc[var.env]
+  cidr_block                       = local.vpc[var.env]
   assign_generated_ipv6_cidr_block = true
-  
+
   tags = merge(local.common_tags, {
-    Name = "${var.env}-ip"
-  })   
+    Name = "${var.env}-vpc"
+  })
 }
 
 resource "aws_security_group" "sec_group" {
@@ -74,11 +71,11 @@ resource "aws_security_group" "sec_group" {
 
   tags = merge(local.common_tags, {
     Name = "${var.env}-sec_group"
-  }) 
+  })
 }
 
 resource "aws_vpc_security_group_ingress_rule" "sec_group_ipv4" {
-  for_each = toset([for p in var.ports : tostring(p)])
+  for_each          = toset([for p in var.ports : tostring(p)])
   security_group_id = aws_security_group.sec_group.id
   cidr_ipv4         = aws_vpc.vpc.cidr_block
   from_port         = each.value
@@ -87,7 +84,7 @@ resource "aws_vpc_security_group_ingress_rule" "sec_group_ipv4" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "sec_group_ipv6" {
-  for_each = toset([for p in var.ports : tostring(p)])
+  for_each          = toset([for p in var.ports : tostring(p)])
   security_group_id = aws_security_group.sec_group.id
   cidr_ipv6         = aws_vpc.vpc.ipv6_cidr_block
   from_port         = each.value
@@ -110,7 +107,7 @@ resource "aws_vpc_security_group_egress_rule" "allow_all_traffic_ipv6" {
 resource "aws_vpc_security_group_ingress_rule" "sec_group_ipv4_allow" {
   for_each          = toset([for p in var.ports : tostring(p)])
   security_group_id = aws_security_group.sec_group.id
-  cidr_ipv4         = "0.0.0.0/0"  # ← интернет
+  cidr_ipv4         = "0.0.0.0/0"
   from_port         = tonumber(each.value)
   ip_protocol       = "tcp"
   to_port           = tonumber(each.value)
